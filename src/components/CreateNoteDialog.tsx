@@ -150,7 +150,7 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit, isSavi
                       <Input 
                           id="file" 
                           type="file" 
-                          accept=".png, .jpg, .jpeg, .pdf"
+                          accept="image/png, image/jpeg, application/pdf"
                           onChange={(e) => setFile(e.target.files?.[0] || null)}
                       />
                        <p className="text-xs text-muted-foreground mt-1">Supported formats: PNG, JPG, PDF.</p>
