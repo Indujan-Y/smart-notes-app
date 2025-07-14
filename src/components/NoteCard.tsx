@@ -29,7 +29,7 @@ export function NoteCard({ note }: NoteCardProps) {
   return (
     <Link href={`/dashboard/notes/${note.id}`} className="flex">
       <Card className="flex flex-col w-full hover:shadow-lg transition-shadow duration-300">
-        {note.type === 'file' && note.fileUrl && (
+        {note.type === 'upload' && note.fileUrl && (
           <div className="relative h-40 w-full">
               <Image 
                   src={note.fileUrl} 

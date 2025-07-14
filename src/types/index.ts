@@ -5,5 +5,5 @@ export type Note = {
   summary: string;
   timestamp: number;
   fileUrl?: string;
-  type: 'text' | 'file';
+  type: 'text' | 'upload';
 };

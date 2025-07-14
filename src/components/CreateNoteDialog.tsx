@@ -24,11 +24,12 @@ import { ScrollArea } from './ui/scroll-area';
 interface CreateNoteDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSave: (note: Omit<Note, 'id'> & { id?: string }) => void;
+  onSave: (note: Omit<Note, 'id'> & { id?: string }, file?: File | null) => void;
   noteToEdit?: Note;
+  isSaving: boolean;
 }
 
-export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: CreateNoteDialogProps) {
+export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit, isSaving }: CreateNoteDialogProps) {
   const [activeTab, setActiveTab] = useState<'text' | 'upload'>('text');
   const [title, setTitle] = useState('');
   const [inputText, setInputText] = useState('');
@@ -44,8 +45,6 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
         setInputText(noteToEdit.originalText);
         setSummary(noteToEdit.summary);
         setActiveTab(noteToEdit.type === 'text' ? 'text' : 'upload');
-        // File handling for edit is complex, typically URLs are managed, not file objects.
-        // For simplicity, we don't re-hydrate the file input.
         setFile(null); 
       } else {
         // Reset form for new note
@@ -101,11 +100,8 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
         return;
     }
 
-    const finalTitle = title.trim() || inputText.split(' ').slice(0, 5).join(' ') || 'Untitled Note';
+    const finalTitle = title.trim() || (activeTab === 'text' ? inputText.split(' ').slice(0, 5).join(' ') : file?.name) || 'Untitled Note';
     
-    // We can't easily get a persistent URL for a new file here without uploading it first.
-    // For now, we'll pass the responsibility up and handle file uploads separately if needed.
-    // This dialog now primarily focuses on text and summary generation.
     const noteData: Omit<Note, 'id'> & { id?: string } = {
       id: noteToEdit?.id,
       title: finalTitle,
@@ -113,11 +109,10 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
       summary: summary,
       timestamp: noteToEdit?.timestamp || Date.now(),
       type: activeTab,
-      // fileUrl is managed by the dashboard page after upload.
       fileUrl: noteToEdit?.fileUrl, 
     };
 
-    onSave(noteData);
+    onSave(noteData, file);
     setIsOpen(false);
   };
 
@@ -165,7 +160,7 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
                   </TabsContent>
               </Tabs>
               
-              <Button onClick={handleGenerateSummary} disabled={isPending}>
+              <Button onClick={handleGenerateSummary} disabled={isPending || isSaving}>
                   {isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -185,7 +180,10 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
         
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!summary || isPending}>Save Note</Button>
+          <Button onClick={handleSave} disabled={!summary || isPending || isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Note
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,22 +1,24 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useTransition } from 'react';
 import type { Note } from '@/types';
 import { NoteCard } from '@/components/NoteCard';
 import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { createNote, updateNote, getUserNotes } from '@/services/notes';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { uploadFileAndGetURL } from '@/services/storage';
 
 export function DashboardClient() {
   const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | undefined>(undefined);
@@ -56,27 +58,39 @@ export function DashboardClient() {
     setCreateDialogOpen(true);
   };
 
-  const handleSaveNote = async (note: Omit<Note, 'id'> & { id?: string }) => {
+  const handleSaveNote = async (note: Omit<Note, 'id'> & { id?: string }, file?: File | null) => {
     if (!user) {
       toast({ title: "Error", description: "You must be logged in to save notes.", variant: "destructive" });
       return;
     }
+    setIsSaving(true);
     
     try {
-      if (note.id) { // This case is now handled on the note detail page, but keeping for safety.
+      let fileUrl = note.fileUrl || undefined;
+
+      // If there's a new file, upload it and get the URL
+      if (file) {
+        fileUrl = await uploadFileAndGetURL(file, user.uid);
+      }
+
+      const noteToSave = { ...note, fileUrl };
+
+      if (note.id) {
         const noteId = note.id;
-        const noteDataToUpdate = { ...note };
+        const noteDataToUpdate = { ...noteToSave };
         delete noteDataToUpdate.id; 
         await updateNote(noteId, noteDataToUpdate);
         toast({ title: "Note Updated", description: "Your note has been successfully updated." });
-      } else { // Create new note
-        await createNote(user.uid, note);
+      } else {
+        await createNote(user.uid, noteToSave);
         toast({ title: "Note Created", description: "Your new note has been saved." });
       }
-      await fetchNotes(); // Refetch notes for both create and update
+      await fetchNotes(); // Refetch notes
     } catch (error) {
       console.error("Failed to save note:", error);
       toast({ title: "Error", description: "Failed to save the note.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -131,6 +145,7 @@ export function DashboardClient() {
         setIsOpen={setCreateDialogOpen}
         onSave={handleSaveNote}
         noteToEdit={noteToEdit}
+        isSaving={isSaving}
       />
     </>
   );
