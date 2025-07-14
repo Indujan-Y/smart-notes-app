@@ -1,11 +1,11 @@
 // src/services/storage.ts
 'use server';
 
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { adminStorage } from '@/lib/firebase-admin';
+import { randomUUID } from 'crypto';
 
 /**
- * Uploads a file to Firebase Storage and returns its public URL.
+ * Uploads a file to Firebase Storage using the Admin SDK and returns its public URL.
  * @param file The file to upload.
  * @param userId The ID of the user uploading the file.
  * @returns The public URL of the uploaded file.
@@ -15,15 +15,25 @@ export async function uploadFileAndGetURL(file: File, userId: string): Promise<s
     throw new Error('File and user ID are required for upload.');
   }
 
-  // Create a unique path for the file to prevent overwrites
+  const bucket = adminStorage.bucket();
   const filePath = `user-uploads/${userId}/${Date.now()}-${file.name}`;
-  const storageRef = ref(storage, filePath);
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-  // Upload the file
-  const snapshot = await uploadBytes(storageRef, file);
-  
-  // Get the public download URL
-  const downloadURL = await getDownloadURL(snapshot.ref);
-  
-  return downloadURL;
+  const fileUpload = bucket.file(filePath);
+
+  await fileUpload.save(fileBuffer, {
+    metadata: {
+      contentType: file.type,
+      // Generate a unique token for public access
+      metadata: {
+        firebaseStorageDownloadTokens: randomUUID(),
+      },
+    },
+  });
+
+  // Construct the public URL manually.
+  // Note: getSignedUrl is often preferred for private files, but for public access, this is standard.
+  const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${fileUpload.metadata.metadata.firebaseStorageDownloadTokens}`;
+
+  return publicUrl;
 }
