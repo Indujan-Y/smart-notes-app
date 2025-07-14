@@ -52,6 +52,10 @@ function ThemeToggle() {
     );
 }
 
+function deleteCookie(name: string) {
+  document.cookie = name + '=; Max-Age=-99999999;';
+}
+
 const navItems = [
   { href: '/dashboard', label: 'My Notes', icon: StickyNote },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
@@ -66,6 +70,7 @@ export function Header() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      deleteCookie('idToken');
       router.push('/');
     } catch (error) {
       toast({
