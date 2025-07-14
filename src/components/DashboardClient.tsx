@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -11,15 +10,12 @@ import { Input } from '@/components/ui/input';
 import { createNote, updateNote, deleteNote, getUserNotes } from '@/services/notes';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
 
-interface DashboardClientProps {
-  initialNotes: Note[];
-  userId: string;
-}
-
-export function DashboardClient({ initialNotes, userId }: DashboardClientProps) {
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
-  const [isLoading, setIsLoading] = useState(false);
+export function DashboardClient() {
+  const { user } = useAuth();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | undefined>(undefined);
@@ -27,10 +23,10 @@ export function DashboardClient({ initialNotes, userId }: DashboardClientProps) 
   const { toast } = useToast();
 
   const fetchNotes = useCallback(async () => {
-    if (!userId) return;
+    if (!user) return;
     setIsLoading(true);
     try {
-      const userNotes = await getUserNotes(userId);
+      const userNotes = await getUserNotes(user.uid);
       setNotes(userNotes);
     } catch (error) {
       console.error("Error fetching notes:", error);
@@ -38,7 +34,7 @@ export function DashboardClient({ initialNotes, userId }: DashboardClientProps) 
     } finally {
       setIsLoading(false);
     }
-  }, [userId, toast]);
+  }, [user, toast]);
   
   useEffect(() => {
     fetchNotes();
@@ -65,12 +61,12 @@ export function DashboardClient({ initialNotes, userId }: DashboardClientProps) 
   };
 
   const handleDeleteNote = async (id: string) => {
-    if (!userId) {
-      toast({ title: "Error", description: "User ID is missing.", variant: "destructive" });
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to delete notes.", variant: "destructive" });
       return;
     }
     try {
-      await deleteNote(userId, id);
+      await deleteNote(user.uid, id);
       await fetchNotes();
       toast({ title: "Note Deleted", description: "Your note has been successfully deleted." });
     } catch (error) {
@@ -79,8 +75,8 @@ export function DashboardClient({ initialNotes, userId }: DashboardClientProps) 
   };
   
   const handleSaveNote = async (note: Omit<Note, 'id'> & { id?: string }) => {
-    if (!userId) {
-      toast({ title: "Error", description: "User ID is missing.", variant: "destructive" });
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to save notes.", variant: "destructive" });
       return;
     }
     
@@ -92,7 +88,7 @@ export function DashboardClient({ initialNotes, userId }: DashboardClientProps) 
         await updateNote(noteId, noteDataToUpdate);
         toast({ title: "Note Updated", description: "Your note has been successfully updated." });
       } else { // Create new note
-        await createNote(userId, note);
+        await createNote(user.uid, note);
         toast({ title: "Note Created", description: "Your new note has been saved." });
       }
       await fetchNotes(); // Refetch notes for both create and update
@@ -123,7 +119,7 @@ export function DashboardClient({ initialNotes, userId }: DashboardClientProps) 
         </div>
       </div>
       
-      {isLoading && !notes.length ? (
+      {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
         </div>

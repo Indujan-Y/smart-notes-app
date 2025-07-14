@@ -17,14 +17,14 @@ export async function createUserProfile(user: { uid: string; email: string | nul
     throw new Error("User email is required to create a profile.");
   }
   const userRef = doc(db, 'users', user.uid);
-  const newUserProfile: UserProfile = {
+  const newUserProfile: Omit<UserProfile, 'notes'> & { notes: string[] } = {
     uid: user.uid,
     email: user.email,
     name: user.name || user.email.split('@')[0], // Default name from email
     notes: [], // Initialize with an empty array of notes
   };
-  await setDoc(userRef, newUserProfile);
-  return newUserProfile;
+  await setDoc(userRef, newUserProfile, { merge: true });
+  return newUserProfile as UserProfile;
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {

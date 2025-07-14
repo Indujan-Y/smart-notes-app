@@ -1,7 +1,7 @@
 // src/services/notes.ts
 'use server';
 
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Note } from '@/types';
 
@@ -9,6 +9,7 @@ const notesCollection = collection(db, 'notes');
 const usersCollection = collection(db, 'users');
 
 export async function createNote(userId: string, noteData: Omit<Note, 'id' | 'timestamp'> & { timestamp?: number }) {
+  if (!userId) throw new Error("User ID is required to create a note.");
   const newNote = {
     ...noteData,
     userId,
@@ -21,13 +22,14 @@ export async function createNote(userId: string, noteData: Omit<Note, 'id' | 'ti
   const userRef = doc(usersCollection, userId);
   await updateDoc(userRef, {
     notes: arrayUnion(docRef.id)
-  }, { merge: true }); // Use merge to avoid overwriting the user document if it doesn't exist
+  });
 
   return { ...newNote, id: docRef.id };
 }
 
 export async function getUserNotes(userId: string): Promise<Note[]> {
-  const q = query(notesCollection, where('userId', '==', userId));
+  if (!userId) return [];
+  const q = query(notesCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
 }
@@ -38,6 +40,8 @@ export async function updateNote(noteId: string, noteData: Partial<Note>) {
 }
 
 export async function deleteNote(userId: string, noteId: string) {
+  if (!userId) throw new Error("User ID is required to delete a note.");
+  
   // Delete the note document
   const noteRef = doc(db, 'notes', noteId);
   await deleteDoc(noteRef);
