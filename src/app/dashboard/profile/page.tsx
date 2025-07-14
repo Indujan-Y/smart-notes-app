@@ -20,19 +20,32 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       const fetchProfile = async () => {
         setIsLoading(true);
-        const userProfile = await getUserProfile(user.uid);
-        if (userProfile) {
-          setProfile(userProfile);
-          setName(userProfile.name);
+        try {
+            const userProfile = await getUserProfile(user.uid);
+            if (userProfile) {
+                setProfile(userProfile);
+                setName(userProfile.name);
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+            toast({
+                title: 'Error',
+                description: 'Could not load your profile.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
       };
       fetchProfile();
+    } else if (!authLoading) {
+        // If there's no user and we're not loading, stop the loading spinner.
+        setIsLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading, toast]);
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +78,7 @@ export default function ProfilePage() {
   }
 
   if (!profile) {
-    return <div>Could not load user profile.</div>;
+    return <div>Could not load user profile. Please try again later.</div>;
   }
   
   return (
