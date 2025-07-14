@@ -4,12 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { cn } from '@/lib/utils';
-import { Cog, User, StickyNote } from 'lucide-react';
+import { User, StickyNote } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'My Notes', icon: StickyNote },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
-  { href: '/dashboard/settings', label: 'Settings', icon: Cog },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

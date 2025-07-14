@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import { getUserProfile, updateUserProfile, UserProfile } from '@/services/users';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,19 +17,18 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [userName, setUserName] = useState('');
   const auth = getAuth(app);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const profile = await getUserProfile(firebaseUser.uid);
-        setUser(profile);
-        setUserName(profile?.name || '');
-        setIsLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setFirebaseUser(user);
       } else {
-        // Handle user not logged in
+        setFirebaseUser(null);
+        setUserProfile(null);
         setIsLoading(false);
       }
     });
@@ -37,13 +36,31 @@ export default function ProfilePage() {
     return () => unsubscribe();
   }, [auth]);
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (firebaseUser) {
+        setIsLoading(true);
+        try {
+            const profile = await getUserProfile(firebaseUser.uid);
+            setUserProfile(profile);
+            setUserName(profile?.name || '');
+        } catch (error) {
+            toast({ title: 'Error', description: 'Could not fetch your profile.', variant: 'destructive'});
+        } finally {
+            setIsLoading(false);
+        }
+      }
+    };
+    fetchProfile();
+  }, [firebaseUser, toast]);
+
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!userProfile) return;
     setIsSaving(true);
     try {
-      await updateUserProfile(user.uid, { name: userName });
-      setUser({ ...user, name: userName });
+      await updateUserProfile(userProfile.uid, { name: userName });
+      setUserProfile({ ...userProfile, name: userName });
       toast({
         title: 'Profile Updated',
         description: 'Your profile information has been successfully updated.',
@@ -63,15 +80,15 @@ export default function ProfilePage() {
     return (
       <div className="space-y-6">
         <div>
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-4 w-64 mt-2" />
+          <h1 className="text-lg font-semibold md:text-2xl font-headline">Profile</h1>
+          <p className="text-muted-foreground">Manage your account settings and profile information.</p>
         </div>
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-4 w-64 mt-2" />
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 pt-6">
             <div className="flex items-center gap-6">
               <Skeleton className="h-20 w-20 rounded-full" />
               <Skeleton className="h-10 w-36" />
@@ -92,7 +109,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
+  if (!userProfile) {
     return (
         <Card>
             <CardHeader>
@@ -118,7 +135,7 @@ export default function ProfilePage() {
           <form onSubmit={handleSaveChanges} className="space-y-6">
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={user.avatarUrl || `https://i.pravatar.cc/150?u=${user.uid}`} />
+                <AvatarImage src={userProfile.avatarUrl || `https://i.pravatar.cc/150?u=${userProfile.uid}`} />
                 <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <Button type="button" variant="outline">
@@ -133,7 +150,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={user.email} disabled />
+                <Input id="email" type="email" value={userProfile.email} disabled />
               </div>
             </div>
             <div className="flex justify-end">

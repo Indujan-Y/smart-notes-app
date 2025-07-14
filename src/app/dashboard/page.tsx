@@ -5,9 +5,9 @@ import type { Note } from '@/types';
 import { NoteCard } from '@/components/NoteCard';
 import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import { getUserNotes, createNote, updateNote, deleteNote } from '@/services/notes';
 import { useToast } from '@/hooks/use-toast';
@@ -19,17 +19,15 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | undefined>(undefined);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
 
   const auth = getAuth(app);
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserId(user.uid);
-      } else {
-        setUserId(null);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
         setNotes([]);
         setIsLoading(false);
       }
@@ -38,17 +36,17 @@ export default function DashboardPage() {
   }, [auth]);
 
   const fetchNotes = useCallback(async () => {
-    if (!userId) return;
+    if (!user) return;
     setIsLoading(true);
     try {
-      const userNotes = await getUserNotes(userId);
+      const userNotes = await getUserNotes(user.uid);
       setNotes(userNotes);
     } catch (error) {
       toast({ title: "Error fetching notes", description: "Could not retrieve your notes.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  }, [userId, toast]);
+  }, [user, toast]);
 
   useEffect(() => {
     fetchNotes();
@@ -59,7 +57,7 @@ export default function DashboardPage() {
       .filter(note =>
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         note.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.originalText.toLowerCase().includes(searchQuery.toLowerCase())
+        (note.originalText && note.originalText.toLowerCase().includes(searchQuery.toLowerCase()))
       )
       .sort((a, b) => b.timestamp - a.timestamp);
   }, [notes, searchQuery]);
@@ -77,7 +75,7 @@ export default function DashboardPage() {
   const handleDeleteNote = async (id: string) => {
     try {
       await deleteNote(id);
-      setNotes(notes.filter(note => note.id !== id));
+      await fetchNotes();
       toast({ title: "Note Deleted", description: "Your note has been successfully deleted." });
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete the note.", variant: "destructive" });
@@ -85,7 +83,7 @@ export default function DashboardPage() {
   };
   
   const handleSaveNote = async (note: Omit<Note, 'id'> & { id?: string }) => {
-    if (!userId) {
+    if (!user) {
       toast({ title: "Error", description: "You must be logged in to save a note.", variant: "destructive" });
       return;
     }
@@ -94,13 +92,13 @@ export default function DashboardPage() {
       if (note.id) { // Update existing note
         const noteId = note.id;
         const noteDataToUpdate = { ...note };
-        delete noteDataToUpdate.id; // Don't update the id field
+        delete noteDataToUpdate.id; 
         await updateNote(noteId, noteDataToUpdate);
-        await fetchNotes(); // Refetch to get updated list
+        await fetchNotes();
         toast({ title: "Note Updated", description: "Your note has been successfully updated." });
       } else { // Create new note
-        await createNote(userId, note);
-        await fetchNotes(); // Refetch to get the new note
+        await createNote(user.uid, note);
+        await fetchNotes();
         toast({ title: "Note Created", description: "Your new note has been saved." });
       }
     } catch (error) {
