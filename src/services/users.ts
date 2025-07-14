@@ -9,6 +9,7 @@ export type UserProfile = {
   email: string;
   name: string;
   avatarUrl?: string;
+  notes: string[]; // Array of note IDs
 };
 
 export async function createUserProfile(user: { uid: string; email: string | null; name?: string }) {
@@ -20,6 +21,7 @@ export async function createUserProfile(user: { uid: string; email: string | nul
     uid: user.uid,
     email: user.email,
     name: user.name || user.email.split('@')[0], // Default name from email
+    notes: [], // Initialize with an empty array of notes
   };
   await setDoc(userRef, newUserProfile);
   return newUserProfile;

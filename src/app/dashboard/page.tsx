@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -77,8 +78,12 @@ export default function DashboardPage() {
   };
 
   const handleDeleteNote = async (id: string) => {
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to delete a note.", variant: "destructive" });
+      return;
+    }
     try {
-      await deleteNote(id);
+      await deleteNote(user.uid, id);
       await fetchNotes();
       toast({ title: "Note Deleted", description: "Your note has been successfully deleted." });
     } catch (error) {
