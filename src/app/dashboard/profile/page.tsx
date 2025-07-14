@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,8 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   
   useEffect(() => {
-    if (user && !authLoading) {
+    // Only proceed to fetch profile if auth is resolved and we have a user
+    if (!authLoading && user) {
       const fetchProfile = async () => {
         setIsLoading(true);
         try {
@@ -28,6 +30,13 @@ export default function ProfilePage() {
             if (userProfile) {
                 setProfile(userProfile);
                 setName(userProfile.name);
+            } else {
+                // If no profile is found for a logged-in user, it's an error state
+                toast({
+                    title: 'Error',
+                    description: 'Could not find your profile data.',
+                    variant: 'destructive',
+                });
             }
         } catch (error) {
             console.error("Failed to fetch profile:", error);
@@ -41,9 +50,10 @@ export default function ProfilePage() {
         }
       };
       fetchProfile();
-    } else if (!authLoading) {
-        // If there's no user and we're not loading, stop the loading spinner.
-        setIsLoading(false);
+    } else if (!authLoading && !user) {
+      // If auth is resolved and there's no user, we can stop loading.
+      // This case might happen if the user logs out in another tab.
+      setIsLoading(false);
     }
   }, [user, authLoading, toast]);
 
@@ -69,6 +79,7 @@ export default function ProfilePage() {
     }
   };
 
+  // Keep showing loader as long as auth check is happening OR we are fetching data.
   if (authLoading || isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -77,8 +88,14 @@ export default function ProfilePage() {
     );
   }
 
+  // After loading, if there's still no profile, show the error message.
   if (!profile) {
-    return <div>Could not load user profile. Please try again later.</div>;
+    return (
+        <div className="flex flex-col items-center justify-center h-full">
+            <p className="text-lg text-muted-foreground">Could not load user profile.</p>
+            <p className="text-sm text-muted-foreground">Please try refreshing the page.</p>
+        </div>
+    );
   }
   
   return (
