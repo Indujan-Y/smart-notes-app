@@ -1,11 +1,10 @@
 // src/services/notes.ts
 'use server';
 
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { Note } from '@/types';
 
-const db = getFirestore(app);
 const notesCollection = collection(db, 'notes');
 
 export async function createNote(userId: string, noteData: Omit<Note, 'id' | 'timestamp'> & { timestamp?: number }) {

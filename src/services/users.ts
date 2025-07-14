@@ -1,10 +1,8 @@
 // src/services/users.ts
 'use server';
 
-import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
-
-const db = getFirestore(app);
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export type UserProfile = {
   uid: string;
