@@ -8,11 +8,12 @@ export default async function DashboardPage() {
   try {
     user = await auth.getInitialUser();
   } catch (e) {
-    // Not logged in, redirect to login
-    redirect('/');
+    // Errors during token verification can happen, we'll treat as not logged in.
+    console.error("Auth error:", e);
   }
 
   if (!user) {
+    // If no user is found after checking, then redirect.
     redirect('/');
   }
 
