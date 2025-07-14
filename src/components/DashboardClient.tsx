@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { createNote, updateNote, deleteNote, getUserNotes } from '@/services/notes';
+import { createNote, updateNote, getUserNotes } from '@/services/notes';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
@@ -54,26 +55,7 @@ export function DashboardClient() {
     setNoteToEdit(undefined);
     setCreateDialogOpen(true);
   };
-  
-  const handleEditNote = (note: Note) => {
-    setNoteToEdit(note);
-    setCreateDialogOpen(true);
-  };
 
-  const handleDeleteNote = async (id: string) => {
-    if (!user) {
-      toast({ title: "Error", description: "You must be logged in to delete notes.", variant: "destructive" });
-      return;
-    }
-    try {
-      await deleteNote(user.uid, id);
-      await fetchNotes();
-      toast({ title: "Note Deleted", description: "Your note has been successfully deleted." });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete the note.", variant: "destructive" });
-    }
-  };
-  
   const handleSaveNote = async (note: Omit<Note, 'id'> & { id?: string }) => {
     if (!user) {
       toast({ title: "Error", description: "You must be logged in to save notes.", variant: "destructive" });
@@ -81,7 +63,7 @@ export function DashboardClient() {
     }
     
     try {
-      if (note.id) { // Update existing note
+      if (note.id) { // This case is now handled on the note detail page, but keeping for safety.
         const noteId = note.id;
         const noteDataToUpdate = { ...note };
         delete noteDataToUpdate.id; 
@@ -129,8 +111,6 @@ export function DashboardClient() {
             <NoteCard
               key={note.id}
               note={note}
-              onEdit={() => handleEditNote(note)}
-              onDelete={() => handleDeleteNote(note.id)}
             />
           ))}
         </div>
