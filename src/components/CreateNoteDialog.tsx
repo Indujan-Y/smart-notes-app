@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Note } from '@/types';
 import { summarizeText } from '@/ai/flows/summarize-text';
 import { summarizeImagePdf } from '@/ai/flows/summarize-image-pdf';
+import { ScrollArea } from './ui/scroll-area';
 
 interface CreateNoteDialogProps {
   isOpen: boolean;
@@ -121,52 +122,54 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter a title for your note (optional)" />
-            </div>
+        <ScrollArea className="max-h-[70vh]">
+          <div className="grid gap-4 py-4 pr-6">
+              <div className="grid gap-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter a title for your note (optional)" />
+              </div>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'text' | 'upload')}>
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="text" disabled={!!noteToEdit && noteToEdit.type !== 'text'}>Text Input</TabsTrigger>
-                    <TabsTrigger value="upload" disabled={!!noteToEdit && noteToEdit.type !== 'upload'}>File Upload</TabsTrigger>
-                </TabsList>
-                <TabsContent value="text" className="mt-4">
-                    <Textarea 
-                        placeholder="Type or paste your note here..." 
-                        className="min-h-[150px]"
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                    />
-                </TabsContent>
-                <TabsContent value="upload" className="mt-4">
-                    <Input 
-                        id="file" 
-                        type="file" 
-                        accept=".png, .jpg, .jpeg, .pdf"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    />
-                     <p className="text-xs text-muted-foreground mt-1">Supported formats: PNG, JPG, PDF.</p>
-                </TabsContent>
-            </Tabs>
-            
-            <Button onClick={handleGenerateSummary} disabled={isPending}>
-                {isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Generate Summary
-            </Button>
-            
-            {summary && (
-                <div className="mt-4 rounded-md border bg-muted/50 p-4">
-                    <h4 className="font-semibold mb-2">Generated Summary:</h4>
-                    <p className="text-sm">{summary}</p>
-                </div>
-            )}
-        </div>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'text' | 'upload')}>
+                  <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="text" disabled={!!noteToEdit && noteToEdit.type !== 'text'}>Text Input</TabsTrigger>
+                      <TabsTrigger value="upload" disabled={!!noteToEdit && noteToEdit.type !== 'upload'}>File Upload</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="text" className="mt-4">
+                      <Textarea 
+                          placeholder="Type or paste your note here..." 
+                          className="min-h-[150px]"
+                          value={inputText}
+                          onChange={(e) => setInputText(e.target.value)}
+                      />
+                  </TabsContent>
+                  <TabsContent value="upload" className="mt-4">
+                      <Input 
+                          id="file" 
+                          type="file" 
+                          accept=".png, .jpg, .jpeg, .pdf"
+                          onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      />
+                       <p className="text-xs text-muted-foreground mt-1">Supported formats: PNG, JPG, PDF.</p>
+                  </TabsContent>
+              </Tabs>
+              
+              <Button onClick={handleGenerateSummary} disabled={isPending}>
+                  {isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Generate Summary
+              </Button>
+              
+              {summary && (
+                  <div className="mt-4 rounded-md border bg-muted/50 p-4">
+                      <h4 className="font-semibold mb-2">Generated Summary:</h4>
+                      <p className="text-sm">{summary}</p>
+                  </div>
+              )}
+          </div>
+        </ScrollArea>
         
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
