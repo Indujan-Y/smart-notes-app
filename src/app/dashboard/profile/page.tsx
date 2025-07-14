@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,10 +24,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setFirebaseUser(user);
-      } else {
-        setFirebaseUser(null);
+      setFirebaseUser(user);
+      if (!user) {
         setUserProfile(null);
         setIsLoading(false);
       }
@@ -36,31 +34,34 @@ export default function ProfilePage() {
     return () => unsubscribe();
   }, [auth]);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (firebaseUser) {
-        setIsLoading(true);
-        try {
-            const profile = await getUserProfile(firebaseUser.uid);
-            setUserProfile(profile);
-            setUserName(profile?.name || '');
-        } catch (error) {
-            toast({ title: 'Error', description: 'Could not fetch your profile.', variant: 'destructive'});
-        } finally {
-            setIsLoading(false);
-        }
+  const fetchProfile = useCallback(async () => {
+    if (firebaseUser) {
+      setIsLoading(true);
+      try {
+        const profile = await getUserProfile(firebaseUser.uid);
+        setUserProfile(profile);
+        setUserName(profile?.name || '');
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        toast({ title: 'Error', description: 'Could not fetch your profile.', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
       }
-    };
-    fetchProfile();
+    }
   }, [firebaseUser, toast]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userProfile) return;
+    if (!firebaseUser) return;
     setIsSaving(true);
     try {
-      await updateUserProfile(userProfile.uid, { name: userName });
-      setUserProfile({ ...userProfile, name: userName });
+      await updateUserProfile(firebaseUser.uid, { name: userName });
+      // Refetch profile to get the latest data
+      await fetchProfile();
       toast({
         title: 'Profile Updated',
         description: 'Your profile information has been successfully updated.',
@@ -109,7 +110,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!userProfile) {
+  if (!firebaseUser || !userProfile) {
     return (
         <Card>
             <CardHeader>
@@ -136,7 +137,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={userProfile.avatarUrl || `https://i.pravatar.cc/150?u=${userProfile.uid}`} />
-                <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{userName ? userName.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
               </Avatar>
               <Button type="button" variant="outline">
                 <Upload className="mr-2 h-4 w-4" />

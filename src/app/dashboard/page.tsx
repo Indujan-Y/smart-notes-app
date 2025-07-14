@@ -42,6 +42,7 @@ export default function DashboardPage() {
       const userNotes = await getUserNotes(user.uid);
       setNotes(userNotes);
     } catch (error) {
+      console.error("Error fetching notes:", error);
       toast({ title: "Error fetching notes", description: "Could not retrieve your notes.", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -49,10 +50,13 @@ export default function DashboardPage() {
   }, [user, toast]);
 
   useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
+    if (user) {
+      fetchNotes();
+    }
+  }, [user, fetchNotes]);
 
   const filteredNotes = useMemo(() => {
+    if (!notes) return [];
     return notes
       .filter(note =>
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -94,14 +98,14 @@ export default function DashboardPage() {
         const noteDataToUpdate = { ...note };
         delete noteDataToUpdate.id; 
         await updateNote(noteId, noteDataToUpdate);
-        await fetchNotes();
         toast({ title: "Note Updated", description: "Your note has been successfully updated." });
       } else { // Create new note
         await createNote(user.uid, note);
-        await fetchNotes();
         toast({ title: "Note Created", description: "Your new note has been saved." });
       }
+      await fetchNotes(); // Refetch notes for both create and update
     } catch (error) {
+      console.error("Failed to save note:", error);
       toast({ title: "Error", description: "Failed to save the note.", variant: "destructive" });
     }
   };
