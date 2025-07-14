@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { Note } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Edit, Trash2, ArrowLeft } from 'lucide-react';
+import { Loader2, Edit, Trash2, ArrowLeft, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteNote, updateNote } from '@/services/notes';
 import { CreateNoteDialog } from '@/components/CreateNoteDialog';
@@ -133,6 +133,14 @@ export default function NoteDetailPage() {
                     </CardDescription>
                 </div>
                 <div className="flex gap-2">
+                    {note.fileUrl && (
+                      <a href={note.fileUrl} download target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="icon">
+                            <Download className="h-4 w-4" />
+                            <span className="sr-only">Download</span>
+                        </Button>
+                      </a>
+                    )}
                     <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
                         <Edit className="h-4 w-4" />
                         <span className="sr-only">Edit</span>
