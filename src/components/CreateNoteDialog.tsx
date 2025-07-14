@@ -24,7 +24,7 @@ import { ScrollArea } from './ui/scroll-area';
 interface CreateNoteDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSave: (note: Note) => void;
+  onSave: (note: Omit<Note, 'id'> & { id?: string }) => void;
   noteToEdit?: Note;
 }
 
@@ -44,7 +44,11 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
         setInputText(noteToEdit.originalText);
         setSummary(noteToEdit.summary);
         setActiveTab(noteToEdit.type === 'text' ? 'text' : 'upload');
+        // File handling for edit is complex, typically URLs are managed, not file objects.
+        // For simplicity, we don't re-hydrate the file input.
+        setFile(null); 
       } else {
+        // Reset form for new note
         setTitle('');
         setInputText('');
         setFile(null);
@@ -99,16 +103,21 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
 
     const finalTitle = title.trim() || inputText.split(' ').slice(0, 5).join(' ') || 'Untitled Note';
     
-    const note: Note = {
-      id: noteToEdit?.id || crypto.randomUUID(),
+    // We can't easily get a persistent URL for a new file here without uploading it first.
+    // For now, we'll pass the responsibility up and handle file uploads separately if needed.
+    // This dialog now primarily focuses on text and summary generation.
+    const noteData: Omit<Note, 'id'> & { id?: string } = {
+      id: noteToEdit?.id,
       title: finalTitle,
       originalText: inputText,
       summary: summary,
       timestamp: noteToEdit?.timestamp || Date.now(),
       type: activeTab,
-      fileUrl: file ? URL.createObjectURL(file) : noteToEdit?.fileUrl,
+      // fileUrl is managed by the dashboard page after upload.
+      fileUrl: noteToEdit?.fileUrl, 
     };
-    onSave(note);
+
+    onSave(noteData);
     setIsOpen(false);
   };
 
@@ -150,6 +159,9 @@ export function CreateNoteDialog({ isOpen, setIsOpen, onSave, noteToEdit }: Crea
                           onChange={(e) => setFile(e.target.files?.[0] || null)}
                       />
                        <p className="text-xs text-muted-foreground mt-1">Supported formats: PNG, JPG, PDF.</p>
+                       {noteToEdit?.fileUrl && (
+                        <p className="text-xs text-muted-foreground mt-2">Current file: <a href={noteToEdit.fileUrl} target="_blank" rel="noopener noreferrer" className="underline">View file</a>. Upload a new file to replace it.</p>
+                       )}
                   </TabsContent>
               </Tabs>
               

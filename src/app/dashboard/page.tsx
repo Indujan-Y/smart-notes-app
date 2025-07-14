@@ -1,46 +1,58 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Note } from '@/types';
 import { NoteCard } from '@/components/NoteCard';
 import { CreateNoteDialog } from '@/components/CreateNoteDialog';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-
-const initialNotes: Note[] = [
-  {
-    id: '1',
-    title: 'Meeting Summary',
-    originalText: 'The meeting was about the Q3 roadmap. We discussed the new features for the Smart Scribe app. The main points were to add collaboration, real-time editing, and more export options. The team agreed on the priorities. The deadline is end of Q3.',
-    summary: 'Q3 roadmap meeting focused on new Smart Scribe features like collaboration, real-time editing, and more export options, with a deadline set for the end of Q3.',
-    timestamp: new Date('2023-10-26T10:00:00Z').getTime(),
-    type: 'text',
-  },
-  {
-    id: '2',
-    title: 'AI Research Insights',
-    originalText: 'Artificial intelligence (AI) is intelligence demonstrated by machines, as opposed to the natural intelligence displayed by humans or animals. Leading AI textbooks define the field as the study of "intelligent agents": any system that perceives its environment and takes actions that maximize its chance of successfully achieving its goals.',
-    summary: 'AI, or artificial intelligence, is the study and application of intelligent agents—systems that perceive their environment and act to maximize goal achievement, contrasting with natural intelligence.',
-    timestamp: new Date('2023-10-25T14:30:00Z').getTime(),
-    type: 'text',
-  },
-  {
-    id: '3',
-    title: 'Lunch Receipt Details',
-    originalText: 'Receipt from The Good Cafe. Total: $25.50. Items: Sandwich, Coffee.',
-    summary: 'Lunch receipt from The Good Cafe totaling $25.50 for a sandwich and coffee.',
-    timestamp: new Date('2023-10-27T12:00:00Z').getTime(),
-    type: 'file',
-    fileUrl: 'https://placehold.co/600x400.png',
-  }
-];
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { app } from '@/lib/firebase';
+import { getUserNotes, createNote, updateNote, deleteNote } from '@/services/notes';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [noteToEdit, setNoteToEdit] = useState<Note | undefined>(undefined);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  const auth = getAuth(app);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+      } else {
+        setUserId(null);
+        setNotes([]);
+        setIsLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [auth]);
+
+  const fetchNotes = useCallback(async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    try {
+      const userNotes = await getUserNotes(userId);
+      setNotes(userNotes);
+    } catch (error) {
+      toast({ title: "Error fetching notes", description: "Could not retrieve your notes.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, toast]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
   const filteredNotes = useMemo(() => {
     return notes
@@ -62,24 +74,43 @@ export default function DashboardPage() {
     setCreateDialogOpen(true);
   };
 
-  const handleDeleteNote = (id: string) => {
-    setNotes(notes.filter(note => note.id !== id));
+  const handleDeleteNote = async (id: string) => {
+    try {
+      await deleteNote(id);
+      setNotes(notes.filter(note => note.id !== id));
+      toast({ title: "Note Deleted", description: "Your note has been successfully deleted." });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete the note.", variant: "destructive" });
+    }
   };
   
-  const handleSaveNote = (note: Note) => {
-    const existingNoteIndex = notes.findIndex(n => n.id === note.id);
-    if (existingNoteIndex > -1) {
-      const updatedNotes = [...notes];
-      updatedNotes[existingNoteIndex] = note;
-      setNotes(updatedNotes);
-    } else {
-      setNotes([note, ...notes]);
+  const handleSaveNote = async (note: Omit<Note, 'id'> & { id?: string }) => {
+    if (!userId) {
+      toast({ title: "Error", description: "You must be logged in to save a note.", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      if (note.id) { // Update existing note
+        const noteId = note.id;
+        const noteDataToUpdate = { ...note };
+        delete noteDataToUpdate.id; // Don't update the id field
+        await updateNote(noteId, noteDataToUpdate);
+        await fetchNotes(); // Refetch to get updated list
+        toast({ title: "Note Updated", description: "Your note has been successfully updated." });
+      } else { // Create new note
+        await createNote(userId, note);
+        await fetchNotes(); // Refetch to get the new note
+        toast({ title: "Note Created", description: "Your new note has been saved." });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save the note.", variant: "destructive" });
     }
   };
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 mb-8">
         <h1 className="text-lg font-semibold md:text-2xl font-headline">My Notes</h1>
         <div className="flex items-center gap-2 md:gap-4">
           <div className="relative">
@@ -98,7 +129,11 @@ export default function DashboardPage() {
         </div>
       </div>
       
-      {filteredNotes.length > 0 ? (
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
+        </div>
+      ) : filteredNotes.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredNotes.map(note => (
             <NoteCard

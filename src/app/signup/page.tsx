@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { app } from '@/lib/firebase';
+import { createUserProfile } from '@/services/users';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -34,7 +35,15 @@ export default function SignupPage() {
     }
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Create user profile in Firestore
+      await createUserProfile({
+        uid: user.uid,
+        email: user.email,
+      });
+
       toast({
         title: 'Account Created',
         description: 'You have successfully signed up! Please login.',
