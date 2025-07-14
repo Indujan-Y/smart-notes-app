@@ -38,16 +38,29 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-      setCookie('idToken', idToken, 1); // Set cookie for 1 day
-      router.push('/dashboard');
+      const idToken = await userCredential.user.getIdToken(true); // Force token refresh
+      
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ idToken })
+      });
+
+      if (response.ok) {
+        router.push('/dashboard');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+
     } catch (error: any) {
       toast({
         title: 'Login Failed',
         description: error.message,
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
