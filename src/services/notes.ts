@@ -1,7 +1,7 @@
 // src/services/notes.ts
 'use server';
 
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, arrayUnion, arrayRemove, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Note } from '@/types';
 
@@ -17,12 +17,12 @@ export async function createNote(userId: string, noteData: Omit<Note, 'id' | 'ti
   };
   // Add the note to the 'notes' collection
   const docRef = await addDoc(notesCollection, newNote);
-  
+
   // Add the new note's ID to the user's 'notes' array
   const userRef = doc(usersCollection, userId);
-  await updateDoc(userRef, {
+  await setDoc(userRef, {
     notes: arrayUnion(docRef.id)
-  });
+  }, { merge: true });
 
   return { ...newNote, id: docRef.id };
 }
@@ -43,7 +43,7 @@ export async function updateNote(noteId: string, noteData: Partial<Note>) {
 
 export async function deleteNote(userId: string, noteId: string) {
   if (!userId) throw new Error("User ID is required to delete a note.");
-  
+
   // Delete the note document
   const noteRef = doc(db, 'notes', noteId);
   await deleteDoc(noteRef);
@@ -51,6 +51,7 @@ export async function deleteNote(userId: string, noteId: string) {
   // Remove the note's ID from the user's 'notes' array
   const userRef = doc(usersCollection, userId);
   await updateDoc(userRef, {
-      notes: arrayRemove(noteId)
+    notes: arrayRemove(noteId)
   });
 }
+
