@@ -29,7 +29,9 @@ export async function createNote(userId: string, noteData: Omit<Note, 'id' | 'ti
 
 export async function getUserNotes(userId: string): Promise<Note[]> {
   if (!userId) return [];
-  const q = query(notesCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
+  // The orderBy clause is removed to avoid needing a composite index for now.
+  // Sorting is handled on the client-side in DashboardClient.tsx.
+  const q = query(notesCollection, where('userId', '==', userId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
 }
